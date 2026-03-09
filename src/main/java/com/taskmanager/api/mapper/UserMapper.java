@@ -1,6 +1,7 @@
 package com.taskmanager.api.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.ReportingPolicy;
 
 import com.taskmanager.api.dto.UserRequestDTO;
@@ -13,4 +14,6 @@ public interface UserMapper {
 	User toEntity(UserRequestDTO dto);
 	
 	UserResponseDTO toResponseDTO(User user);
+	
+	void updateEntityFromDTO(@MappingTarget User user, UserRequestDTO dto);
 }
