@@ -1,6 +1,7 @@
 package com.taskmanager.api.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.ReportingPolicy;
 
@@ -15,6 +16,9 @@ public interface TaskMapper {
 	
 	TaskResponseDTO toResponseDTO(Task task);
 	
+	@Mapping(target = "user", ignore = true)
+	@Mapping(target = "id", ignore = true)
+	@Mapping(target = "createdAt", ignore = true)
 	void updateTaskFromDTO(@MappingTarget Task task, TaskRequestDTO dto);
 	
 }

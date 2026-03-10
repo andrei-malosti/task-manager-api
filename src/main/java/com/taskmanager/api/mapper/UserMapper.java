@@ -1,6 +1,7 @@
 package com.taskmanager.api.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.ReportingPolicy;
 
@@ -15,5 +16,7 @@ public interface UserMapper {
 	
 	UserResponseDTO toResponseDTO(User user);
 	
+	@Mapping(target = "id", ignore = true)
+	@Mapping(target = "createdAt", ignore = true)
 	void updateEntityFromDTO(@MappingTarget User user, UserRequestDTO dto);
 }
