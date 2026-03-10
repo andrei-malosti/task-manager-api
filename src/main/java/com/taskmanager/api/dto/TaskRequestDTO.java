@@ -29,5 +29,5 @@ public record TaskRequestDTO(
 		@Valid
 		UserUniqueIdDTO user
 		) {
-
+	
 }
