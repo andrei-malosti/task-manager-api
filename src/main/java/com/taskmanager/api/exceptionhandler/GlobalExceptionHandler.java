@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -45,7 +47,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler{
 	
 		HttpStatusCode status = HttpStatus.NOT_FOUND;
 		ProblemType problemType = ProblemType.RESOURCE_IN_USE;
-		Problem problem = createProblemBuilder(status, problemType, "Resource is in use and cannot be deleted")
+		Problem problem = createProblemBuilder(status, problemType, "Resource is in use and cannot be deleted.")
 				.build();
 		
 		return handleExceptionInternal(ex, problem, new HttpHeaders(), status, request);
@@ -57,7 +59,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler{
 		
 		HttpStatusCode statusCode = HttpStatus.BAD_REQUEST;
 		ProblemType problemType = ProblemType.ENDPOINT_NOT_FOUND;
-		Problem problem = createProblemBuilder(statusCode, problemType, "Endpoint does not exist")
+		Problem problem = createProblemBuilder(statusCode, problemType, "Endpoint does not exist.")
 				.build();
 		
 		return handleExceptionInternal(ex, problem, headers, statusCode, request);
@@ -80,8 +82,33 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler{
 				}).toList();
 		
 		ProblemType problemType = ProblemType.INVALID_DATA;
-		Problem problem = createProblemBuilder(status, problemType, "One or more fields are invalid")
+		Problem problem = createProblemBuilder(status, problemType, "One or more fields are invalid.")
 				.fields(fields)
+				.build();
+		
+		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+	
+	@Override
+	protected @Nullable ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, HttpHeaders headers,
+			HttpStatusCode status, WebRequest request) {
+		
+		String detail = String.format("The value %s is not valid for parameter %s. Please check the format and try again."
+				,ex.getValue(), ex.getRequiredType().getSimpleName());
+		ProblemType problemType = ProblemType.INVALID_PATH_VALUE;
+		Problem problem = createProblemBuilder(status, problemType, detail)
+				.build();
+		
+		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+	
+	@Override
+	protected @Nullable ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		
+		String detail = "The request body is invalid or malformed. Check for syntax errors.";
+		ProblemType problemType = ProblemType.INVALID_REQUEST_BODY;
+		Problem problem = createProblemBuilder(status, problemType, detail)
 				.build();
 		
 		return handleExceptionInternal(ex, problem, headers, status, request);
