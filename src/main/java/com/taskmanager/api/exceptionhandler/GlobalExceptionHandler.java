@@ -2,11 +2,13 @@ package com.taskmanager.api.exceptionhandler;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,9 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import com.taskmanager.domain.exception.ResourceNotFoundException;
 
 import lombok.RequiredArgsConstructor;
+import tools.jackson.core.JacksonException.Reference;
+import tools.jackson.databind.exc.InvalidFormatException;
+import tools.jackson.databind.exc.PropertyBindingException;
 
 @ControllerAdvice
 @RequiredArgsConstructor
@@ -106,7 +111,38 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler{
 	protected @Nullable ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		
+		Throwable rootCause = NestedExceptionUtils.getRootCause(ex);
+		
+		if(rootCause instanceof PropertyBindingException) {
+			return handlePropertyBinding((PropertyBindingException) rootCause, headers, status, request);
+		} else if(rootCause instanceof InvalidFormatException) {
+			return handleInvalidFormat((InvalidFormatException) rootCause, headers, status, request);
+		}
+		
 		String detail = "The request body is invalid or malformed. Check for syntax errors.";
+		ProblemType problemType = ProblemType.INVALID_REQUEST_BODY;
+		Problem problem = createProblemBuilder(status, problemType, detail)
+				.build();
+		
+		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+	
+	private ResponseEntity<Object> handlePropertyBinding(PropertyBindingException ex,HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		
+		String path = joinPath(ex.getPath());
+		String detail = String.format("property %s does not exist", path);
+		ProblemType problemType = ProblemType.INVALID_REQUEST_BODY;
+		Problem problem = createProblemBuilder(status, problemType, detail)
+				.build();
+	
+		return handleExceptionInternal(ex, problem, headers, status, request);
+	}
+	
+	private ResponseEntity<Object> handleInvalidFormat(InvalidFormatException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request){
+		String path = joinPath(ex.getPath());
+		String detail = String.format("property %s does not accept %s. Expected type: %s"
+				, path.toUpperCase(), String.valueOf(ex.getValue()).toUpperCase(), ex.getTargetType().getSimpleName().toUpperCase());
+		
 		ProblemType problemType = ProblemType.INVALID_REQUEST_BODY;
 		Problem problem = createProblemBuilder(status, problemType, detail)
 				.build();
@@ -121,5 +157,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler{
 				.title(problemType.getTitle())
 				.detail(detail)
 				.timeStamp(OffsetDateTime.now());
+	}
+	
+	private String joinPath(List<Reference> ref) {
+		return ref.stream()
+				.map(reference -> reference.getPropertyName())
+				.collect(Collectors.joining("."));
 	}
 }
